@@ -496,8 +496,8 @@ document.getElementById('cfg-save-btn').addEventListener('click', () => {
     err.textContent = 'Enter a valid Anthropic API key (starts with sk-ant-).';
     err.classList.add('visible'); return;
   }
-  if (!nk || !nk.startsWith('secret_')) {
-    err.textContent = 'Enter a valid Notion integration token (starts with secret_).';
+  if (!nk || (!nk.startsWith('secret_') && !nk.startsWith('ntn_'))) {
+    err.textContent = 'Enter a valid Notion integration token (starts with secret_ or ntn_).';
     err.classList.add('visible'); return;
   }
   err.classList.remove('visible');
