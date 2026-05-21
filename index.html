@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d0d0d" />
+  <title>Journal</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d0d0d;
+      --surface:    #141414;
+      --border:     #2a2a2a;
+      --text:       #e8e4dc;
+      --muted:      #5a5a5a;
+      --accent:     #c9a96e;
+      --accent-dim: #7a6240;
+      --danger:     #c0665a;
+      --good:       #6aab7a;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lora', Georgia, serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      display: none;
+      min-height: 100dvh;
+      flex-direction: column;
+    }
+    .screen.active { display: flex; }
+
+    /* ── WRITE SCREEN ── */
+    #write-screen {
+      padding: 0;
+    }
+
+    .write-header {
+      padding: 2rem 2rem 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .date-stamp {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .word-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    #entry-textarea {
+      flex: 1;
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 2rem;
+      font-family: 'Lora', Georgia, serif;
+      font-size: 1.1rem;
+      line-height: 1.85;
+      color: var(--text);
+      caret-color: var(--accent);
+    }
+
+    #entry-textarea::placeholder {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .write-footer {
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.65rem 1.5rem;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0d0d0d;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: #dbbe88; border-color: #dbbe88; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+
+    .btn-confirm {
+      background: var(--good);
+      color: #0d0d0d;
+      border-color: var(--good);
+    }
+    .btn-confirm:hover { background: #7dc98e; }
+
+    /* ── PROCESSING SCREEN ── */
+    #processing-screen {
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .processing-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── CONFIRM SCREEN ── */
+    #confirm-screen {
+      padding: 2.5rem 2rem;
+      gap: 0;
+    }
+
+    .confirm-header {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .confirm-title {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 1.5rem;
+    }
+
+    .confirm-preview {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: #a09890;
+      font-style: italic;
+      border-left: 2px solid var(--border);
+      padding-left: 1rem;
+      margin-bottom: 2rem;
+      max-height: 120px;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    }
+
+    .confirm-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.65rem;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .tag.type  { border-color: var(--accent-dim); color: var(--accent); }
+    .tag.mood-good       { border-color: #3d6b48; color: var(--good); }
+    .tag.mood-neutral    { border-color: #444; color: #888; }
+    .tag.mood-low        { border-color: #7a6240; color: var(--accent); }
+    .tag.mood-difficult  { border-color: #7a3830; color: var(--danger); }
+
+    .confirm-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: auto;
+    }
+
+    /* ── SAVED SCREEN ── */
+    #saved-screen {
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .saved-icon {
+      font-size: 2rem;
+      opacity: 0;
+      animation: fadeUp 0.4s ease 0.1s forwards;
+    }
+
+    .saved-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeUp 0.4s ease 0.25s forwards;
+    }
+
+    .saved-new-btn {
+      margin-top: 1.5rem;
+      opacity: 0;
+      animation: fadeUp 0.4s ease 0.4s forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── ERROR ── */
+    .error-msg {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--danger);
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--danger);
+      border-radius: 3px;
+      margin-top: 1rem;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    /* ── CONFIG SCREEN ── */
+    #config-screen {
+      padding: 2.5rem 2rem;
+      gap: 1.5rem;
+    }
+
+    .config-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+
+    .config-subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .config-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .config-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.75rem 1rem;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .config-input:focus { border-color: var(--accent-dim); }
+
+    .config-hint {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.63rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .config-gear {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 1.5rem;
+      font-size: 1rem;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0.4;
+      transition: opacity 0.2s;
+      background: none;
+      border: none;
+      padding: 0.25rem;
+    }
+    .config-gear:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     CONFIG SCREEN
+══════════════════════════════════════ -->
+<div id="config-screen" class="screen">
+  <div class="config-title">Setup</div>
+  <div class="config-subtitle">One-time configuration — saved locally in your browser</div>
+
+  <div class="config-field">
+    <label class="config-label" for="cfg-anthropic">Anthropic API Key</label>
+    <input class="config-input" id="cfg-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" />
+    <div class="config-hint">Get yours at console.anthropic.com → API Keys</div>
+  </div>
+
+  <div class="config-field">
+    <label class="config-label" for="cfg-notion-key">Notion Integration Token</label>
+    <input class="config-input" id="cfg-notion-key" type="password" placeholder="secret_..." autocomplete="off" />
+    <div class="config-hint">notion.com → Settings → Connections → Develop integrations → New integration</div>
+  </div>
+
+  <div class="config-field">
+    <label class="config-label" for="cfg-notion-db">Notion Database ID</label>
+    <input class="config-input" id="cfg-notion-db" type="text" placeholder="eb93423481594a849281bcf42874599f" autocomplete="off" />
+    <div class="config-hint">Your Journal database ID — the 32-char string in the Notion URL</div>
+  </div>
+
+  <div class="error-msg" id="config-error"></div>
+
+  <button class="btn btn-primary" id="cfg-save-btn" style="align-self:flex-start">Save & Start Writing</button>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     WRITE SCREEN
+══════════════════════════════════════ -->
+<div id="write-screen" class="screen">
+  <div class="write-header">
+    <span class="date-stamp" id="date-display"></span>
+    <span class="word-count" id="word-count">0 words</span>
+  </div>
+
+  <textarea
+    id="entry-textarea"
+    placeholder="…"
+    autofocus
+    spellcheck="true"
+  ></textarea>
+
+  <div class="write-footer">
+    <button class="btn btn-primary" id="done-btn" disabled>Done →</button>
+  </div>
+
+  <button class="config-gear" id="gear-btn" title="Settings">⚙</button>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     PROCESSING SCREEN
+══════════════════════════════════════ -->
+<div id="processing-screen" class="screen">
+  <div class="spinner"></div>
+  <div class="processing-label">Reading your entry…</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     CONFIRM SCREEN
+══════════════════════════════════════ -->
+<div id="confirm-screen" class="screen">
+  <div class="confirm-header">Ready to save</div>
+  <div class="confirm-title" id="confirm-title"></div>
+  <div class="confirm-preview" id="confirm-preview"></div>
+  <div class="confirm-meta" id="confirm-meta"></div>
+  <div class="error-msg" id="confirm-error"></div>
+  <div class="confirm-actions">
+    <button class="btn btn-confirm" id="save-btn">Save to Notion</button>
+    <button class="btn btn-ghost" id="back-btn">← Edit</button>
+    <button class="btn btn-danger" id="discard-btn">Discard</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SAVED SCREEN
+══════════════════════════════════════ -->
+<div id="saved-screen" class="screen">
+  <div class="saved-icon">✦</div>
+  <div class="saved-label">Saved</div>
+  <button class="btn btn-ghost saved-new-btn" id="new-entry-btn">New entry</button>
+</div>
+
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const DB_ID = 'eb93423481594a849281bcf42874599f'; // your Notion Journal DB
+
+const LS = {
+  get: k => localStorage.getItem(k) || '',
+  set: (k,v) => localStorage.setItem(k, v),
+};
+
+function cfg() {
+  return {
+    anthropicKey: LS.get('jnl_anthropic'),
+    notionKey:    LS.get('jnl_notion_key'),
+    notionDb:     LS.get('jnl_notion_db') || DB_ID,
+  };
+}
+
+// ── SCREENS ──────────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let analysisResult = null;
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  const c = cfg();
+  if (!c.anthropicKey || !c.notionKey) {
+    populateConfigForm();
+    show('config-screen');
+  } else {
+    startWrite();
+  }
+}
+
+// ── CONFIG SCREEN ─────────────────────────────────────────────────────────────
+function populateConfigForm() {
+  const c = cfg();
+  document.getElementById('cfg-anthropic').value = c.anthropicKey;
+  document.getElementById('cfg-notion-key').value = c.notionKey;
+  document.getElementById('cfg-notion-db').value  = c.notionDb;
+}
+
+document.getElementById('cfg-save-btn').addEventListener('click', () => {
+  const ak = document.getElementById('cfg-anthropic').value.trim();
+  const nk = document.getElementById('cfg-notion-key').value.trim();
+  const nd = document.getElementById('cfg-notion-db').value.trim() || DB_ID;
+  const err = document.getElementById('config-error');
+
+  if (!ak || !ak.startsWith('sk-ant-')) {
+    err.textContent = 'Enter a valid Anthropic API key (starts with sk-ant-).';
+    err.classList.add('visible'); return;
+  }
+  if (!nk || !nk.startsWith('secret_')) {
+    err.textContent = 'Enter a valid Notion integration token (starts with secret_).';
+    err.classList.add('visible'); return;
+  }
+  err.classList.remove('visible');
+  LS.set('jnl_anthropic', ak);
+  LS.set('jnl_notion_key', nk);
+  LS.set('jnl_notion_db', nd);
+  startWrite();
+});
+
+document.getElementById('gear-btn').addEventListener('click', () => {
+  populateConfigForm();
+  show('config-screen');
+});
+
+// ── WRITE SCREEN ──────────────────────────────────────────────────────────────
+function startWrite() {
+  const ta = document.getElementById('entry-textarea');
+  ta.value = '';
+  updateWordCount();
+  updateDate();
+  show('write-screen');
+  setTimeout(() => ta.focus(), 100);
+}
+
+function updateDate() {
+  const now = new Date();
+  const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  document.getElementById('date-display').textContent =
+    now.toLocaleDateString('fr-CA', opts);
+}
+
+function updateWordCount() {
+  const val = document.getElementById('entry-textarea').value.trim();
+  const words = val ? val.split(/\s+/).length : 0;
+  document.getElementById('word-count').textContent = words === 1 ? '1 word' : `${words} words`;
+  document.getElementById('done-btn').disabled = words < 3;
+}
+
+document.getElementById('entry-textarea').addEventListener('input', updateWordCount);
+
+document.getElementById('done-btn').addEventListener('click', async () => {
+  const text = document.getElementById('entry-textarea').value.trim();
+  if (!text) return;
+  show('processing-screen');
+  try {
+    analysisResult = await analyzeEntry(text);
+    renderConfirm(text, analysisResult);
+    show('confirm-screen');
+  } catch(e) {
+    show('write-screen');
+    alert('Could not analyze your entry. Check your API key in settings.\n\n' + e.message);
+  }
+});
+
+// ── ANALYZE WITH CLAUDE ───────────────────────────────────────────────────────
+async function analyzeEntry(text) {
+  const { anthropicKey } = cfg();
+
+  const prompt = `You are a journaling assistant. Analyze this journal entry and return ONLY a JSON object with no extra text, no markdown fences.
+
+Entry:
+"""
+${text}
+"""
+
+Return this exact structure:
+{
+  "title": "a short evocative title (max 8 words, no quotes, not a summary — more like a chapter name)",
+  "type": "Personal" or "Work" or "Mixed",
+  "mood": "Good" or "Neutral" or "Low" or "Difficult",
+  "tags": ["array", "of", "relevant", "tags", "from", "this", "list: Personal, Work, Mixed, Reflection, Anxiety, Project, Health, Relationship"]
+}
+
+Rules:
+- title should feel like a diary chapter, not a summary sentence
+- mood should reflect the emotional tone of the writing, not what's described
+- tags: pick 1-3 most relevant, only from the provided list
+- respond with ONLY the JSON object`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const raw = data.content.find(b => b.type === 'text')?.text || '';
+  const clean = raw.replace(/```json|```/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ── CONFIRM SCREEN ────────────────────────────────────────────────────────────
+function renderConfirm(text, analysis) {
+  document.getElementById('confirm-title').textContent = analysis.title;
+  document.getElementById('confirm-preview').textContent = text;
+
+  const meta = document.getElementById('confirm-meta');
+  meta.innerHTML = '';
+
+  const moodClass = {
+    'Good': 'mood-good', 'Neutral': 'mood-neutral',
+    'Low': 'mood-low', 'Difficult': 'mood-difficult'
+  }[analysis.mood] || 'mood-neutral';
+
+  const tags = [
+    { label: analysis.type, cls: 'type' },
+    { label: analysis.mood, cls: moodClass },
+    ...(analysis.tags || []).map(t => ({ label: t, cls: '' })),
+  ];
+
+  tags.forEach(({ label, cls }) => {
+    const span = document.createElement('span');
+    span.className = 'tag ' + cls;
+    span.textContent = label;
+    meta.appendChild(span);
+  });
+
+  document.getElementById('confirm-error').classList.remove('visible');
+}
+
+document.getElementById('back-btn').addEventListener('click', () => {
+  show('write-screen');
+  setTimeout(() => document.getElementById('entry-textarea').focus(), 100);
+});
+
+document.getElementById('discard-btn').addEventListener('click', () => {
+  if (confirm('Discard this entry?')) startWrite();
+});
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const text = document.getElementById('entry-textarea').value.trim();
+  const btn = document.getElementById('save-btn');
+  const err = document.getElementById('confirm-error');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  err.classList.remove('visible');
+
+  try {
+    await saveToNotion(text, analysisResult);
+    show('saved-screen');
+  } catch(e) {
+    err.textContent = 'Could not save to Notion: ' + e.message;
+    err.classList.add('visible');
+    btn.disabled = false;
+    btn.textContent = 'Save to Notion';
+  }
+});
+
+// ── SAVE TO NOTION ────────────────────────────────────────────────────────────
+async function saveToNotion(text, analysis) {
+  const { notionKey, notionDb } = cfg();
+  const today = new Date().toISOString().split('T')[0];
+
+  const properties = {
+    Name: { title: [{ text: { content: analysis.title } }] },
+    Date: { date: { start: today } },
+    Type: { select: { name: analysis.type } },
+    Mood: { select: { name: analysis.mood } },
+    Tags: { multi_select: (analysis.tags || []).map(t => ({ name: t })) },
+  };
+
+  // Page content: full entry text as paragraphs
+  const paragraphs = text.split(/\n+/).filter(Boolean).map(p => ({
+    object: 'block',
+    type: 'paragraph',
+    paragraph: {
+      rich_text: [{ type: 'text', text: { content: p } }],
+    },
+  }));
+
+  const body = {
+    parent: { database_id: notionDb },
+    properties,
+    children: paragraphs,
+  };
+
+  const res = await fetch('https://api.notion.com/v1/pages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${notionKey}`,
+      'Content-Type': 'application/json',
+      'Notion-Version': '2022-06-28',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+}
+
+// ── SAVED SCREEN ──────────────────────────────────────────────────────────────
+document.getElementById('new-entry-btn').addEventListener('click', startWrite);
+
+// ── START ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
