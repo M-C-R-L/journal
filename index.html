@@ -225,6 +225,41 @@
     .tag.mood-low        { border-color: #7a6240; color: var(--accent); }
     .tag.mood-difficult  { border-color: #7a3830; color: var(--danger); }
 
+    .tag.editable { cursor: pointer; }
+    .tag.editable:hover { opacity: 0.7; }
+    .tag.removable::after { content: ' ×'; opacity: 0.5; }
+    .tag.removable:hover::after { opacity: 1; }
+    .tag.add-tag {
+      border-style: dashed;
+      border-color: var(--border);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tag.add-tag:hover { border-color: var(--muted); color: var(--text); }
+
+    .tag-dropdown {
+      position: absolute;
+      background: #1e1e1e;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.25rem 0;
+      z-index: 100;
+      min-width: 120px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .tag-dropdown div {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.45rem 0.85rem;
+      cursor: pointer;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .tag-dropdown div:hover { background: var(--border); color: var(--text); }
+    .tag-dropdown div.active { color: var(--accent); }
+
+    .confirm-meta { position: relative; }
+
     .confirm-actions {
       display: flex;
       gap: 0.75rem;
@@ -604,32 +639,111 @@ Rules:
 }
 
 // ── CONFIRM SCREEN ────────────────────────────────────────────────────────────
+const TYPE_OPTIONS = ['Personal', 'Work', 'Mixed'];
+const MOOD_OPTIONS = ['Good', 'Neutral', 'Low', 'Difficult'];
+const TAG_OPTIONS  = ['Personal', 'Work', 'Mixed', 'Reflection', 'Anxiety', 'Project', 'Health', 'Relationship'];
+
+const MOOD_CLASS = {
+  'Good': 'mood-good', 'Neutral': 'mood-neutral',
+  'Low': 'mood-low', 'Difficult': 'mood-difficult'
+};
+
+function closeDropdowns() {
+  document.querySelectorAll('.tag-dropdown').forEach(d => d.remove());
+}
+
+function makeDropdown(options, current, onSelect) {
+  const dd = document.createElement('div');
+  dd.className = 'tag-dropdown';
+  options.forEach(opt => {
+    const item = document.createElement('div');
+    item.textContent = opt;
+    if (opt === current) item.classList.add('active');
+    item.addEventListener('mousedown', e => {
+      e.preventDefault();
+      onSelect(opt);
+      closeDropdowns();
+    });
+    dd.appendChild(item);
+  });
+  return dd;
+}
+
 function renderConfirm(text, analysis) {
   document.getElementById('confirm-title').textContent = analysis.title;
   document.getElementById('confirm-preview').textContent = text;
+  document.getElementById('confirm-error').classList.remove('visible');
 
+  // close dropdowns on outside click
+  document.addEventListener('click', closeDropdowns, { once: false });
+
+  renderMeta();
+}
+
+function renderMeta() {
   const meta = document.getElementById('confirm-meta');
   meta.innerHTML = '';
 
-  const moodClass = {
-    'Good': 'mood-good', 'Neutral': 'mood-neutral',
-    'Low': 'mood-low', 'Difficult': 'mood-difficult'
-  }[analysis.mood] || 'mood-neutral';
+  // TYPE tag — click to cycle
+  const typeTag = document.createElement('span');
+  typeTag.className = 'tag type editable';
+  typeTag.textContent = analysisResult.type;
+  typeTag.addEventListener('click', e => {
+    e.stopPropagation();
+    closeDropdowns();
+    const dd = makeDropdown(TYPE_OPTIONS, analysisResult.type, val => {
+      analysisResult.type = val;
+      renderMeta();
+    });
+    typeTag.appendChild(dd);
+  });
+  meta.appendChild(typeTag);
 
-  const tags = [
-    { label: analysis.type, cls: 'type' },
-    { label: analysis.mood, cls: moodClass },
-    ...(analysis.tags || []).map(t => ({ label: t, cls: '' })),
-  ];
+  // MOOD tag — click to cycle
+  const moodTag = document.createElement('span');
+  moodTag.className = 'tag editable ' + (MOOD_CLASS[analysisResult.mood] || 'mood-neutral');
+  moodTag.textContent = analysisResult.mood;
+  moodTag.addEventListener('click', e => {
+    e.stopPropagation();
+    closeDropdowns();
+    const dd = makeDropdown(MOOD_OPTIONS, analysisResult.mood, val => {
+      analysisResult.mood = val;
+      renderMeta();
+    });
+    moodTag.appendChild(dd);
+  });
+  meta.appendChild(moodTag);
 
-  tags.forEach(({ label, cls }) => {
-    const span = document.createElement('span');
-    span.className = 'tag ' + cls;
-    span.textContent = label;
-    meta.appendChild(span);
+  // TAGS — click to remove
+  (analysisResult.tags || []).forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'tag removable';
+    tag.textContent = t;
+    tag.title = 'Click to remove';
+    tag.addEventListener('click', () => {
+      analysisResult.tags = analysisResult.tags.filter(x => x !== t);
+      renderMeta();
+    });
+    meta.appendChild(tag);
   });
 
-  document.getElementById('confirm-error').classList.remove('visible');
+  // ADD TAG button
+  const available = TAG_OPTIONS.filter(t => !(analysisResult.tags || []).includes(t));
+  if (available.length > 0) {
+    const addTag = document.createElement('span');
+    addTag.className = 'tag add-tag';
+    addTag.textContent = '+ tag';
+    addTag.addEventListener('click', e => {
+      e.stopPropagation();
+      closeDropdowns();
+      const dd = makeDropdown(available, null, val => {
+        analysisResult.tags = [...(analysisResult.tags || []), val];
+        renderMeta();
+      });
+      addTag.appendChild(dd);
+    });
+    meta.appendChild(addTag);
+  }
 }
 
 document.getElementById('back-btn').addEventListener('click', () => {
